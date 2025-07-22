@@ -1,7 +1,7 @@
 from tensorflow.keras.layers import Embedding,Dense,Layer,Input,Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
-from tensorflow.math import reduce_std
+from tensorflow.math import reduce_std,sqrt
 import math
 import numpy as np
 #Positional embedding for the model to understand the positions obviously
@@ -58,7 +58,7 @@ class MultiHeadSelfAttention(Layer):
 
         #Scaled dot product
         dk=cast(self.d_model//self.num_heads,float32)
-        at_score=matmul(q,k,transpose_b=True)/math.sqrt(dk)
+        at_score = matmul(q, k, transpose_b=True) / sqrt(cast(dk, float32))        
         weights=nn.softmax(at_score,axis=-1)
         attention=matmul(weights,v)
 
@@ -116,6 +116,6 @@ class Encoder(Layer):
         self.num_layers=num_layers
         self.encoder=[(EncoderLayer(d_model,ff_hidden,max_len,num_heads,drop_prob)) for i in range(num_layers)]
     def call(self,X):
-        for layer in self.encoder_layers:
+        for layer in self.encoder:
             x = layer(X, training=True)
         return x
