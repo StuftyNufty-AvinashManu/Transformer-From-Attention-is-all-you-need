@@ -27,7 +27,7 @@ class PositionalEncoding(Layer):
         
     def call(self,X):
         X=self.embedding(X)
-        return X+self.position_embedding
+        return X+self.position_embedding  
         
 class MultiHeadSelfAttention(Layer):
     def __init__(self,d_model,max_len,num_heads):
@@ -68,7 +68,7 @@ class MultiHeadSelfAttention(Layer):
         #to capture the final meaning of the word according to the context
         output=self.final(concat_attention)
         return output
-
+    
 class FeedForward(Layer):
     def __init__(self,units,d_model,max_len):
         super(FeedForward,self).__init__()
@@ -93,9 +93,8 @@ class LayerNormalization(Layer):
         return out
     
 class EncoderLayer(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,vocab_size,drop_prob):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob):
         super(EncoderLayer,self).__init__()
-        self.pos_en=PositionalEncoding(vocab_size,d_model,max_len)
         self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads)
         self.feed_forward=FeedForward(ff_hidden,d_model,max_len)
         self.layer_norm1=LayerNormalization(d_model)
@@ -104,20 +103,19 @@ class EncoderLayer(Layer):
         self.dropout2=Dropout(drop_prob)
     def call(self,X):
         res=X
-        X=self.pos_en(X)
         X=self.attention(X)
-        X=self.layer_norm1(res+self.dropout1(X))
+        X=self.layer_norm1(res+X)
         res=X
         X=self.feed_forward(X)
-        X=self.layer_norm2(res+self.dropout2(X))
+        X=self.layer_norm2(res+X)
         return X
     
 class Encoder(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,num_layers,vocab_size,drop_prob):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,num_layers,drop_prob):
         super(Encoder,self).__init__()
         self.num_layers=num_layers
-        self.encoder=[EncoderLayer(d_model,ff_hidden,max_len,num_heads,vocab_size,drop_prob) for i in range(num_layers)]
+        self.encoder=[(EncoderLayer(d_model,ff_hidden,max_len,num_heads,drop_prob)) for i in range(num_layers)]
     def call(self,X):
-        for layer in self.encoder:
-            X=layer(X)
-        return X
+        for layer in self.encoder_layers:
+            x = layer(X, training=True)
+        return x
