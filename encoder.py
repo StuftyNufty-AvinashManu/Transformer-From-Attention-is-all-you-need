@@ -1,5 +1,7 @@
-from tensorflow.keras.layers import Embedding,Dense,Layer
-from tensorflow import concat,random,matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor
+from tensorflow.keras.layers import Embedding,Dense,Layer,Input
+from tensorflow.keras.models import Sequential
+from tensorflow import concat,random,matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
+from tensorflow.math import reduce_std
 import math
 import numpy as np
 #Positional embedding for the model to understand the positions obviously
@@ -66,3 +68,27 @@ class MultiHeadSelfAttention(Layer):
         #to capture the final meaning of the word according to the context
         output=self.final(concat_attention)
         return output
+
+class FeedForward(Layer):
+    def __init__(self,units,d_model,max_len):
+        super().__init__()
+        self.model=Sequential([Input(shape=(max_len,d_model)),
+                               Dense(units,activation='relu'),
+                               Dense(d_model)])
+    def call(self,X):
+        out=self.model(X)  
+        return out
+
+class LayerNormalization(Layer):
+    def __init__(self,d_model,epsilon=1e-5):
+        super().__init__()
+        self.d_model=d_model
+        self.epsilon=epsilon
+        self.beta=self.add_weight(name="beta",shape=(d_model,),initializer='zeros',trainable=True) 
+        self.gamma=self.add_weight(name="gamma",shape=(d_model,),initializer='ones',trainable=True)
+    def call(self,X):
+        mean = reduce_mean(X,axis=2,keepdims=True)
+        std= reduce_std(X,axis=2,keepdims=True)
+        X_norm=(X-mean)/(std+self.epsilon)
+        out=X_norm*self.gamma+self.beta
+        return out
