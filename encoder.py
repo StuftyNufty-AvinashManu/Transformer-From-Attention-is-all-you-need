@@ -1,13 +1,13 @@
-from tensorflow.keras.layers import Embedding,Dense,Layer,Input
+from tensorflow.keras.layers import Embedding,Dense,Layer,Input,Dropout
 from tensorflow.keras.models import Sequential
-from tensorflow import concat,random,matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
+from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
 from tensorflow.math import reduce_std
 import math
 import numpy as np
 #Positional embedding for the model to understand the positions obviously
 class PositionalEncoding(Layer):
     def __init__(self, vocab,d_model,max_len):
-        super().__init__()
+        super(PositionalEncoding,self).__init__()
         self.vocab=vocab
         self.d_model=d_model
         self.max_len=max_len
@@ -31,7 +31,7 @@ class PositionalEncoding(Layer):
         
 class MultiHeadSelfAttention(Layer):
     def __init__(self,d_model,max_len,num_heads):
-        super().__init__()
+        super(MultiHeadSelfAttention,self).__init__()
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
@@ -71,9 +71,8 @@ class MultiHeadSelfAttention(Layer):
 
 class FeedForward(Layer):
     def __init__(self,units,d_model,max_len):
-        super().__init__()
-        self.model=Sequential([Input(shape=(max_len,d_model)),
-                               Dense(units,activation='relu'),
+        super(FeedForward,self).__init__()
+        self.model=Sequential([Dense(units,activation='relu'),
                                Dense(d_model)])
     def call(self,X):
         out=self.model(X)  
@@ -81,14 +80,44 @@ class FeedForward(Layer):
 
 class LayerNormalization(Layer):
     def __init__(self,d_model,epsilon=1e-5):
-        super().__init__()
+        super(LayerNormalization,self).__init__()
         self.d_model=d_model
         self.epsilon=epsilon
         self.beta=self.add_weight(name="beta",shape=(d_model,),initializer='zeros',trainable=True) 
         self.gamma=self.add_weight(name="gamma",shape=(d_model,),initializer='ones',trainable=True)
     def call(self,X):
-        mean = reduce_mean(X,axis=2,keepdims=True)
-        std= reduce_std(X,axis=2,keepdims=True)
+        mean = reduce_mean(X,axis=-1,keepdims=True)
+        std= reduce_std(X,axis=-1,keepdims=True)
         X_norm=(X-mean)/(std+self.epsilon)
         out=X_norm*self.gamma+self.beta
         return out
+    
+class EncoderLayer(Layer):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,vocab_size,drop_prob):
+        super(EncoderLayer,self).__init__()
+        self.pos_en=PositionalEncoding(vocab_size,d_model,max_len)
+        self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads)
+        self.feed_forward=FeedForward(ff_hidden,d_model,max_len)
+        self.layer_norm1=LayerNormalization(d_model)
+        self.layer_norm2=LayerNormalization(d_model)
+        self.dropout1=Dropout(drop_prob)
+        self.dropout2=Dropout(drop_prob)
+    def call(self,X):
+        res=X
+        X=self.pos_en(X)
+        X=self.attention(X)
+        X=self.layer_norm1(res+self.dropout1(X))
+        res=X
+        X=self.feed_forward(X)
+        X=self.layer_norm2(res+self.dropout2(X))
+        return X
+    
+class Encoder(Layer):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,num_layers,vocab_size,drop_prob):
+        super(Encoder,self).__init__()
+        self.num_layers=num_layers
+        self.encoder=[EncoderLayer(d_model,ff_hidden,max_len,num_heads,vocab_size,drop_prob) for i in range(num_layers)]
+    def call(self,X):
+        for layer in self.encoder:
+            X=layer(X)
+        return X
