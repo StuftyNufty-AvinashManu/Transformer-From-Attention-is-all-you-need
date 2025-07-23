@@ -117,5 +117,5 @@ class Encoder(Layer):
         self.encoder=[(EncoderLayer(d_model,ff_hidden,max_len,num_heads,drop_prob)) for i in range(num_layers)]
     def call(self,X):
         for layer in self.encoder:
-            x = layer(X, training=True)
-        return x
+            X = layer(X, training=True)
+        return X
