@@ -65,17 +65,17 @@ class MultiHeadSelfAttention(Layer):
         attention=transpose(attention,perm=[0,2,1,3])#(batch_size,seq_len,heads,d_model)
         concat_attention=reshape(attention,(batch_size,-1,self.d_model))
         #to capture the final meaning of the word according to the context
-        output=self.final(concat_attention)
-        return output
+        out=self.final(concat_attention)
+        return out
     
 class FeedForward(Layer):
     def __init__(self,units,d_model,regularization_const):
         super(FeedForward,self).__init__()
         self.inputs=Dense(units,activation='relu',kernel_regularizer=l2(regularization_const))
-        self.output=Dense(d_model)
+        self.out=Dense(d_model,activation='linear')
     def call(self,X):
         X=self.inputs(X)  
-        X=self.output(X)
+        X=self.out(X)
         return X
 
 class LayerNormalization(Layer):
@@ -96,7 +96,7 @@ class EncoderLayer(Layer):
     def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const):
         super(EncoderLayer,self).__init__()
         self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads,regularization_const)
-        self.feed_forward=FeedForward(ff_hidden,d_model,max_len,regularization_const)
+        self.feed_forward=FeedForward(ff_hidden,d_model,regularization_const)
         self.layer_norm1=LayerNormalization(d_model)
         self.layer_norm2=LayerNormalization(d_model)
         self.dropout1=Dropout(drop_prob)
