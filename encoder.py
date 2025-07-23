@@ -1,5 +1,5 @@
 from tensorflow.keras.layers import Embedding,Dense,Layer,Dropout
-from tensorflow.keras.regualrizers import l2
+from tensorflow.keras.regularizers import l2
 from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
 from tensorflow.math import reduce_std,sqrt
 import numpy as np
