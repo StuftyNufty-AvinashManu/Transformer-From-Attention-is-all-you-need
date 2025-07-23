@@ -1,8 +1,7 @@
-from tensorflow.keras.layers import Embedding,Dense,Layer,Input,Dropout
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding,Dense,Layer,Dropout
+from tensorflow.keras.regualrizers import l2
 from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
 from tensorflow.math import reduce_std,sqrt
-import math
 import numpy as np
 #Positional embedding for the model to understand the positions obviously
 class PositionalEncoding(Layer):
@@ -30,15 +29,15 @@ class PositionalEncoding(Layer):
         return X+self.position_embedding  
         
 class MultiHeadSelfAttention(Layer):
-    def __init__(self,d_model,max_len,num_heads):
+    def __init__(self,d_model,max_len,num_heads,regularization_const):
         super(MultiHeadSelfAttention,self).__init__()
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
-        self.q=Dense(d_model)
-        self.k=Dense(d_model)
-        self.v=Dense(d_model)
-        self.final=Dense(d_model)
+        self.q=Dense(d_model,kernel_regularizer=l2(regularization_const))
+        self.k=Dense(d_model,kernel_regularizer=l2(regularization_const))
+        self.v=Dense(d_model,kernel_regularizer=l2(regularization_const))
+        self.final=Dense(d_model,kernel_regularizer=l2(regularization_const))
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
@@ -70,13 +69,14 @@ class MultiHeadSelfAttention(Layer):
         return output
     
 class FeedForward(Layer):
-    def __init__(self,units,d_model,max_len):
+    def __init__(self,units,d_model,regularization_const):
         super(FeedForward,self).__init__()
-        self.model=Sequential([Dense(units,activation='relu'),
-                               Dense(d_model)])
+        self.inputs=Dense(units,activation='relu',kernel_regularizer=l2(regularization_const))
+        self.output=Dense(d_model)
     def call(self,X):
-        out=self.model(X)  
-        return out
+        X=self.inputs(X)  
+        X=self.output(X)
+        return X
 
 class LayerNormalization(Layer):
     def __init__(self,d_model,epsilon=1e-5):
@@ -93,29 +93,21 @@ class LayerNormalization(Layer):
         return out
     
 class EncoderLayer(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const):
         super(EncoderLayer,self).__init__()
-        self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads)
-        self.feed_forward=FeedForward(ff_hidden,d_model,max_len)
+        self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads,regularization_const)
+        self.feed_forward=FeedForward(ff_hidden,d_model,max_len,regularization_const)
         self.layer_norm1=LayerNormalization(d_model)
         self.layer_norm2=LayerNormalization(d_model)
         self.dropout1=Dropout(drop_prob)
         self.dropout2=Dropout(drop_prob)
-    def call(self,X):
-        res=X
-        X=self.attention(X)
-        X=self.layer_norm1(res+X)
-        res=X
-        X=self.feed_forward(X)
-        X=self.layer_norm2(res+X)
-        return X
-    
-class Encoder(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,num_layers,drop_prob):
-        super(Encoder,self).__init__()
-        self.num_layers=num_layers
-        self.encoder=[(EncoderLayer(d_model,ff_hidden,max_len,num_heads,drop_prob)) for i in range(num_layers)]
-    def call(self,X):
-        for layer in self.encoder:
-            X = layer(X, training=True)
+    def call(self, X, training=False):
+        res = X
+        X = self.attention(X)
+        X = self.dropout1(X, training=training)
+        X = self.layer_norm1(res + X)
+        res = X
+        X = self.feed_forward(X)
+        X = self.dropout2(X, training=training)
+        X = self.layer_norm2(res + X)
         return X
