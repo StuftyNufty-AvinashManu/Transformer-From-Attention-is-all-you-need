@@ -5,13 +5,15 @@ from tensorflow.math import reduce_std,sqrt
 import numpy as np
 from keras.saving import register_keras_serializable
 
+    
+
 
 
 #Positional embedding for the model to understand the positions obviously
 @register_keras_serializable()
 class PositionalEncoding(Layer):
-    def __init__(self, vocab,d_model,max_len):
-        super(PositionalEncoding,self).__init__()
+    def __init__(self, vocab, d_model, max_len, **kwargs):
+        super(PositionalEncoding, self).__init__(**kwargs)
         self.vocab=vocab
         self.d_model=d_model
         self.max_len=max_len
@@ -35,8 +37,8 @@ class PositionalEncoding(Layer):
         
 @register_keras_serializable()
 class MultiHeadSelfAttention(Layer):
-    def __init__(self,d_model,max_len,num_heads,regularization_const):
-        super(MultiHeadSelfAttention,self).__init__()
+    def __init__(self,d_model,max_len,num_heads,regularization_const, **kwargs):
+        super(MultiHeadSelfAttention,self).__init__( **kwargs)
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
@@ -76,8 +78,8 @@ class MultiHeadSelfAttention(Layer):
     
 @register_keras_serializable()
 class FeedForward(Layer):
-    def __init__(self,units,d_model,regularization_const):
-        super(FeedForward,self).__init__()
+    def __init__(self,units,d_model,regularization_const, **kwargs):
+        super(FeedForward,self).__init__( **kwargs)
         self.inputs=Dense(units,activation='relu',kernel_regularizer=l2(regularization_const))
         self.out=Dense(d_model,activation='linear')
     def call(self,X):
@@ -87,8 +89,8 @@ class FeedForward(Layer):
 
 @register_keras_serializable()
 class LayerNormalization(Layer):
-    def __init__(self,d_model,epsilon=1e-5):
-        super(LayerNormalization,self).__init__()
+    def __init__(self,d_model,epsilon=1e-5, **kwargs):
+        super(LayerNormalization,self).__init__( **kwargs)
         self.d_model=d_model
         self.epsilon=epsilon
         self.beta=self.add_weight(name="beta",shape=(d_model,),initializer='zeros',trainable=True) 
@@ -102,8 +104,8 @@ class LayerNormalization(Layer):
     
 @register_keras_serializable()
 class EncoderLayer(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const):
-        super(EncoderLayer,self).__init__()
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const, **kwargs):
+        super(EncoderLayer,self).__init__( **kwargs)
         self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads,regularization_const)
         self.feed_forward=FeedForward(ff_hidden,d_model,regularization_const)
         self.layer_norm1=LayerNormalization(d_model)
