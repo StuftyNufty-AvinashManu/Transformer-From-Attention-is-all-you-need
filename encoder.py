@@ -3,7 +3,12 @@ from tensorflow.keras.regularizers import l2
 from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
 from tensorflow.math import reduce_std,sqrt
 import numpy as np
+from keras.saving import register_keras_serializable
+
+
+
 #Positional embedding for the model to understand the positions obviously
+@register_keras_serializable()
 class PositionalEncoding(Layer):
     def __init__(self, vocab,d_model,max_len):
         super(PositionalEncoding,self).__init__()
@@ -28,6 +33,7 @@ class PositionalEncoding(Layer):
         X=self.embedding(X)
         return X+self.position_embedding  
         
+@register_keras_serializable()
 class MultiHeadSelfAttention(Layer):
     def __init__(self,d_model,max_len,num_heads,regularization_const):
         super(MultiHeadSelfAttention,self).__init__()
@@ -68,6 +74,7 @@ class MultiHeadSelfAttention(Layer):
         out=self.final(concat_attention)
         return out
     
+@register_keras_serializable()
 class FeedForward(Layer):
     def __init__(self,units,d_model,regularization_const):
         super(FeedForward,self).__init__()
@@ -78,6 +85,7 @@ class FeedForward(Layer):
         X=self.out(X)
         return X
 
+@register_keras_serializable()
 class LayerNormalization(Layer):
     def __init__(self,d_model,epsilon=1e-5):
         super(LayerNormalization,self).__init__()
@@ -92,6 +100,7 @@ class LayerNormalization(Layer):
         out=X_norm*self.gamma+self.beta
         return out
     
+@register_keras_serializable()
 class EncoderLayer(Layer):
     def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const):
         super(EncoderLayer,self).__init__()
@@ -101,13 +110,13 @@ class EncoderLayer(Layer):
         self.layer_norm2=LayerNormalization(d_model)
         self.dropout1=Dropout(drop_prob)
         self.dropout2=Dropout(drop_prob)
-    def call(self, X, training=False):
+    def call(self, X):
         res = X
         X = self.attention(X)
-        X = self.dropout1(X, training=training)
+        X = self.dropout1(X)
         X = self.layer_norm1(res + X)
         res = X
         X = self.feed_forward(X)
-        X = self.dropout2(X, training=training)
+        X = self.dropout2(X)
         X = self.layer_norm2(res + X)
         return X
