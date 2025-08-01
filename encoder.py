@@ -1,5 +1,4 @@
 from tensorflow.keras.layers import Embedding,Dense,Layer,Dropout
-from tensorflow.keras.regularizers import l2
 from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to_tensor,Variable,reduce_mean
 from tensorflow.math import reduce_std,sqrt
 import numpy as np
@@ -37,15 +36,15 @@ class PositionalEncoding(Layer):
         
 @register_keras_serializable()
 class MultiHeadSelfAttention(Layer):
-    def __init__(self,d_model,max_len,num_heads,regularization_const, **kwargs):
+    def __init__(self,d_model,max_len,num_heads, **kwargs):
         super(MultiHeadSelfAttention,self).__init__( **kwargs)
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
-        self.q=Dense(d_model,kernel_regularizer=l2(regularization_const))
-        self.k=Dense(d_model,kernel_regularizer=l2(regularization_const))
-        self.v=Dense(d_model,kernel_regularizer=l2(regularization_const))
-        self.final=Dense(d_model,kernel_regularizer=l2(regularization_const))
+        self.q=Dense(d_model)
+        self.k=Dense(d_model)
+        self.v=Dense(d_model)
+        self.final=Dense(d_model)
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
@@ -78,9 +77,9 @@ class MultiHeadSelfAttention(Layer):
     
 @register_keras_serializable()
 class FeedForward(Layer):
-    def __init__(self,units,d_model,regularization_const, **kwargs):
+    def __init__(self,units,d_model, **kwargs):
         super(FeedForward,self).__init__( **kwargs)
-        self.inputs=Dense(units,activation='relu',kernel_regularizer=l2(regularization_const))
+        self.inputs=Dense(units,activation='relu')
         self.out=Dense(d_model,activation='linear')
     def call(self,X):
         X=self.inputs(X)  
@@ -104,10 +103,10 @@ class LayerNormalization(Layer):
     
 @register_keras_serializable()
 class EncoderLayer(Layer):
-    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob,regularization_const, **kwargs):
+    def __init__(self,d_model,ff_hidden,max_len,num_heads,drop_prob, **kwargs):
         super(EncoderLayer,self).__init__( **kwargs)
-        self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads,regularization_const)
-        self.feed_forward=FeedForward(ff_hidden,d_model,regularization_const)
+        self.attention=MultiHeadSelfAttention(d_model,max_len,num_heads)
+        self.feed_forward=FeedForward(ff_hidden,d_model)
         self.layer_norm1=LayerNormalization(d_model)
         self.layer_norm2=LayerNormalization(d_model)
         self.dropout1=Dropout(drop_prob)
