@@ -3,11 +3,6 @@ from tensorflow import matmul,nn,reshape,shape,transpose,float32,cast,convert_to
 from tensorflow.math import reduce_std,sqrt
 import numpy as np
 from keras.saving import register_keras_serializable
-
-    
-
-
-
 #Positional embedding for the model to understand the positions obviously
 @register_keras_serializable()
 class PositionalEncoding(Layer):
