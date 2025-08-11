@@ -77,11 +77,11 @@ class MaskedMultiHeadSelfAttention(nn.Module):
 class FeedForward(nn.Module):
     def __init__(self,units,d_model, **kwargs):
         super(FeedForward,self).__init__( **kwargs)
-        self.inputs=nn.Linear(d_model,units,)
+        self.inputs=nn.Linear(d_model,units)
         self.out=nn.Linear(units,d_model)
     def forward(self,X):
         X=self.inputs(X)  
-        X=nn.ReLU(X)
+        X=nn.functional.relu(X)
         X=self.out(X)
         return X
 
@@ -115,7 +115,7 @@ class MultiHeadCrossAttention(nn.Module):
         
         x = reshape(x, (batch_size, -1, num_heads, self.d_model // num_heads))
         return x.permute(0, 2, 1, 3)
-    def call(self,X,y):
+    def forward(self,X,y):
         batch_size=X.shape[0]
 
         q=self.q(y)
