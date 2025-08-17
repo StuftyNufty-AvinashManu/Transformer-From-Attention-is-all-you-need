@@ -1,11 +1,10 @@
-import numpy as np
 from torch import nn,triu,ones,float32,matmul,arange,sin,cos,zeros,mean,std,reshape,transpose
 import math
 
 def mask_input(X):
     neg_inf=-1e9
     seq_len=X.shape[-1]
-    mask=ones((seq_len,seq_len))
+    mask=ones((seq_len,seq_len),device=X.device)
     mask=triu(mask,1)
     mask=mask*neg_inf
     out=X+mask
@@ -31,17 +30,17 @@ class PositionalEncoding(nn.Module):
     def forward(self,X):
         seq_len=X.shape[-1]
         X=self.embedding(X)
-        return X+self.pe[:seq_len,:]
+        return X+self.pe[:,:seq_len,:]
 class MaskedMultiHeadSelfAttention(nn.Module):
     def __init__(self,d_model,max_len,num_heads, **kwargs):
         super(MaskedMultiHeadSelfAttention,self).__init__( **kwargs)
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
-        self.q=nn.Linear(d_model,d_model)
-        self.k=nn.Linear(d_model,d_model)
-        self.v=nn.Linear(d_model,d_model)
-        self.final=nn.Linear(d_model,d_model)
+        self.q=nn.LazyLinear(d_model)
+        self.k=nn.LazyLinear(d_model)
+        self.v=nn.LazyLinear(d_model)
+        self.final=nn.LazyLinear(d_model)
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
@@ -77,8 +76,8 @@ class MaskedMultiHeadSelfAttention(nn.Module):
 class FeedForward(nn.Module):
     def __init__(self,units,d_model, **kwargs):
         super(FeedForward,self).__init__( **kwargs)
-        self.inputs=nn.Linear(d_model,units)
-        self.out=nn.Linear(units,d_model)
+        self.inputs=nn.LazyLinear(units)
+        self.out=nn.LazyLinear(d_model)
     def forward(self,X):
         X=self.inputs(X)  
         X=nn.functional.relu(X)
@@ -105,10 +104,10 @@ class MultiHeadCrossAttention(nn.Module):
         self.d_model=d_model
         self.max_len=max_len
         self.num_heads=num_heads
-        self.q=nn.Linear(d_model,d_model)
-        self.k=nn.Linear(d_model,d_model)
-        self.v=nn.Linear(d_model,d_model)
-        self.final=nn.Linear(d_model,d_model)
+        self.q=nn.LazyLinear(d_model)
+        self.k=nn.LazyLinear(d_model)
+        self.v=nn.LazyLinear(d_model)
+        self.final=nn.LazyLinear(d_model)
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
