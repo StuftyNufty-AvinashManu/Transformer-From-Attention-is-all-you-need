@@ -1,4 +1,4 @@
-from torch import nn,triu,ones,float32,matmul,arange,sin,cos,zeros,mean,std,reshape,transpose
+from torch import nn,triu,ones,matmul,zeros,float32,mean,std,reshape,transpose,tensor
 import math
 
 def mask_input(X):
@@ -17,20 +17,22 @@ class PositionalEncoding(nn.Module):
         self.d_model=d_model
         self.max_len=max_len
         self.embedding=nn.Embedding(vocab,d_model)
-        pos = arange(max_len).unsqueeze(1)
-        i = arange(d_model).unsqueeze(0)
-        angle_rates = 1 / pow(10000, (2 * (i//2)) / d_model)
-
-        self.pe = zeros(max_len, d_model)
-        self.pe[:, 0::2] = sin(pos * angle_rates[:, 0::2])
-        self.pe[:, 1::2] = cos(pos * angle_rates[:, 1::2])
-
-        self.register_buffer("position_embedding", self.pe.unsqueeze(0))
+        pos=[]
+        for i in range(max_len):
+            embed=[]
+            for j in range(d_model):
+                if j % 2 == 0:
+                    embed.append(math.sin(i / (10000 ** (j / d_model))))
+                else:
+                    embed.append(math.cos(i / (10000 ** ((j - 1) / d_model))))
+            pos.append(embed)
+        pos=tensor(pos, dtype=float32)
+        self.register_buffer("position_embedding",pos)
 
     def forward(self,X):
         seq_len=X.shape[-1]
         X=self.embedding(X)
-        return X+self.pe[:,:seq_len,:]
+        return X+self.position_embedding[:seq_len,:].unsqueeze(0) 
 class MaskedMultiHeadSelfAttention(nn.Module):
     def __init__(self,d_model,max_len,num_heads, **kwargs):
         super(MaskedMultiHeadSelfAttention,self).__init__( **kwargs)
@@ -44,8 +46,8 @@ class MaskedMultiHeadSelfAttention(nn.Module):
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
-        
-        x = x.reshape(batch_size, self.max_len, num_heads, self.d_model // num_heads)
+        seq_len=x.shape[-2]
+        x = x.reshape(batch_size, seq_len, num_heads, self.d_model // num_heads)
         return x.permute(0,2,1,3)
     def forward(self,X):
         batch_size=X.shape[0]
@@ -111,7 +113,7 @@ class MultiHeadCrossAttention(nn.Module):
         
     def split_heads(self,x, num_heads,batch_size):
     # (batch, seq_len, d_model) → (batch, num_heads, seq_len, head_dim)
-        
+        seq_len=x.shape[-2]
         x = reshape(x, (batch_size, -1, num_heads, self.d_model // num_heads))
         return x.permute(0, 2, 1, 3)
     def forward(self,X,y):
